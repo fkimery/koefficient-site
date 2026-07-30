@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinewood — Streams & Videos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e1411;
+    --surface: #151d18;
+    --surface-2: #1b2620;
+    --line: #263229;
+    --moss: #8fae7e;
+    --moss-deep: #5d7a4f;
+    --lichen: #d3a95f;          /* live / warm highlight only */
+    --text: #e6ece4;
+    --text-dim: #93a396;
+    --text-faint: #5f6f62;
+    --radius: 10px;
+    --sidebar-w: 232px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation: none !important; transition: none !important; }
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; border-radius: 4px; }
+
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 600; letter-spacing: .01em; }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    position: fixed; inset: 0 auto 0 0;
+    width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    padding: 28px 20px 22px;
+    z-index: 20;
+  }
+
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 34px;
+  }
+  .brand-mark {
+    width: 34px; height: 34px; flex: none;
+    color: var(--moss);
+  }
+  .brand-name {
+    font-family: 'Fraunces', serif;
+    font-size: 20px; font-weight: 600;
+  }
+  .brand-sub {
+    font-size: 11px; color: var(--text-faint);
+    letter-spacing: .12em; text-transform: uppercase;
+  }
+
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a {
+    display: flex; align-items: center; gap: 11px;
+    padding: 9px 11px; border-radius: 8px;
+    color: var(--text-dim); font-weight: 500;
+    transition: background .15s, color .15s;
+  }
+  .nav a svg { width: 17px; height: 17px; flex: none; opacity: .8; }
+  .nav a:hover { background: var(--surface-2); color: var(--text); }
+  .nav a.active { background: var(--surface-2); color: var(--moss); }
+
+  .live-pill {
+    margin-top: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 13px 14px;
+    background: var(--surface-2);
+  }
+  .live-pill .status {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+  .live-pill.is-live .dot { background: var(--lichen); box-shadow: 0 0 8px var(--lichen); }
+  .live-pill.is-live .status { color: var(--lichen); }
+  .live-pill .next {
+    margin-top: 7px; font-size: 13px; color: var(--text);
+  }
+  .live-pill .next span { color: var(--text-faint); display: block; font-size: 12px; }
+
+  .socials {
+    margin-top: 16px; display: flex; gap: 6px;
+  }
+  .socials a {
+    flex: 1; display: grid; place-items: center;
+    padding: 8px 0; border-radius: 8px;
+    border: 1px solid var(--line); color: var(--text-dim);
+    transition: color .15s, border-color .15s;
+  }
+  .socials a:hover { color: var(--moss); border-color: var(--moss-deep); }
+  .socials svg { width: 16px; height: 16px; }
+
+  /* ---------- Main ---------- */
+  .main { margin-left: var(--sidebar-w); }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 36px 90px; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    padding: 52px 0 40px;
+    overflow: hidden;
+  }
+  .hero-topo {
+    position: absolute; inset: -40px -40px auto;
+    height: 420px; width: calc(100% + 80px);
+    color: var(--moss-deep);
+    opacity: .13; pointer-events: none;
+    mask-image: linear-gradient(to bottom, black 40%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent);
+  }
+  .hero-inner { position: relative; }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--moss); margin-bottom: 10px;
+  }
+  .hero h1 { font-size: clamp(30px, 4vw, 42px); line-height: 1.12; max-width: 560px; }
+  .hero p.lede { color: var(--text-dim); margin: 14px 0 28px; max-width: 520px; }
+
+  .player {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    aspect-ratio: 16 / 9;
+    display: grid; place-items: center;
+    position: relative; overflow: hidden;
+  }
+  .player .offline {
+    text-align: center; padding: 24px;
+  }
+  .player .offline .mono { color: var(--text-faint); font-size: 12.5px; letter-spacing: .1em; }
+  .player .offline h3 { font-size: 22px; margin: 8px 0 4px; }
+  .player .offline p { color: var(--text-dim); font-size: 14px; }
+  .player .badge {
+    position: absolute; top: 14px; left: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: .12em;
+    padding: 5px 10px; border-radius: 6px;
+    background: rgba(14,20,17,.8); border: 1px solid var(--line);
+    color: var(--text-dim);
+  }
+  .player.is-live .badge { color: var(--lichen); border-color: var(--lichen); }
+
+  /* ---------- Sections ---------- */
+  section { margin-top: 58px; }
+  .sec-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 18px; gap: 16px;
+  }
+  .sec-head h2 { font-size: 24px; }
+  .sec-head .more { font-size: 13.5px; color: var(--text-faint); }
+  .sec-head .more:hover { color: var(--moss); }
+
+  /* Schedule */
+  .sched {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .sched-card {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); padding: 14px 15px;
+  }
+  .sched-card .day {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--moss); margin-bottom: 6px;
+  }
+  .sched-card .what { font-weight: 600; font-size: 14.5px; }
+  .sched-card .when { color: var(--text-faint); font-size: 13px; margin-top: 2px; }
+  .sched-card.today { border-color: var(--moss-deep); background: var(--surface-2); }
+
+  /* Tag filter */
+  .tagbar {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: .04em;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--text-dim);
+    background: var(--surface);
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .tag:hover { color: var(--text); border-color: var(--moss-deep); }
+  .tag.on { color: var(--bg); background: var(--moss); border-color: var(--moss); font-weight: 500; }
+
+  /* Video grid */
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  }
+  .vid {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); overflow: hidden;
+    transition: border-color .15s, transform .15s;
+  }
+  .vid:hover { border-color: var(--moss-deep); transform: translateY(-2px); }
+  .thumb {
+    aspect-ratio: 16/9; position: relative;
+    display: grid; place-items: center;
+  }
+  .thumb svg { width: 34px; height: 34px; color: rgba(230,236,228,.85); }
+  .thumb .dur {
+    position: absolute; right: 8px; bottom: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    background: rgba(14,20,17,.85); padding: 3px 7px; border-radius: 5px;
+  }
+  .vid-body { padding: 13px 14px 15px; }
+  .vid-body h3 { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 14.5px; line-height: 1.35; }
+  .vid-meta { color: var(--text-faint); font-size: 12.5px; margin-top: 5px; }
+  .vid-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .vid-tags span {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    color: var(--moss); background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .hidden { display: none; }
+  .empty {
+    grid-column: 1 / -1; text-align: center;
+    color: var(--text-faint); padding: 40px 0; font-size: 14px;
+  }
+
+  /* Playlists */
+  .plist-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .plist {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); padding: 16px;
+    transition: border-color .15s;
+  }
+  .plist:hover { border-color: var(--moss-deep); }
+  .plist .count {
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+    color: var(--text-faint); letter-spacing: .08em;
+  }
+  .plist h3 { font-size: 17px; margin-top: 6px; }
+  .plist p { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+  footer {
+    margin-top: 70px; padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--text-faint); font-size: 13px;
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 960px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .sched, .plist-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 720px) {
+    .sidebar {
+      position: static; width: auto; flex-direction: row; align-items: center;
+      padding: 14px 18px; border-right: none; border-bottom: 1px solid var(--line);
+      gap: 14px;
+    }
+    .brand { margin-bottom: 0; }
+    .nav { flex-direction: row; margin-left: auto; }
+    .nav a span { display: none; }
+    .live-pill, .socials { display: none; }
+    .main { margin-left: 0; }
+    .wrap { padding: 0 18px 60px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 34 34" fill="none" aria-hidden="true">
+      <path d="M17 3 L27 22 H21 L28 31 H6 L13 22 H7 Z" fill="currentColor" opacity=".9"/>
+    </svg>
+    <div>
+      <div class="brand-name">Pinewood</div>
+      <div class="brand-sub">Streams &amp; VODs</div>
+    </div>
+  </div>
+
+  <nav class="nav" aria-label="Main">
+    <a href="#home" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/></svg>
+      <span>Home</span>
+    </a>
+    <a href="#videos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
+      <span>Videos</span>
+    </a>
+    <a href="#playlists">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h12M4 10h12M4 14h7"/><path d="M17 13v6l4-3z" fill="currentColor" stroke="none"/></svg>
+      <span>Playlists</span>
+    </a>
+    <a href="#schedule">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      <span>Schedule</span>
+    </a>
+    <a href="#community">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M15.5 14.6c2.9.2 5.1 2 5.9 5.4"/></svg>
+      <span>Community</span>
+    </a>
+  </nav>
+
+  <div class="live-pill" id="livePill">
+    <div class="status"><span class="dot"></span><span id="liveLabel">Offline</span></div>
+    <div class="next"><span>Next stream</span>Fri · 7:00 PM MT</div>
+  </div>
+
+  <div class="socials">
+    <a href="#" aria-label="Twitch"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 3 3 7v13h4v3h3l3-3h4l5-5V3zm15 11-3 3h-4l-3 3v-3H6V5h13zM13 8h2v5h-2zm-5 0h2v5H8z"/></svg></a>
+    <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 8.2s-.2-1.5-.8-2.1c-.8-.8-1.7-.8-2.1-.9C16.2 5 12 5 12 5s-4.2 0-7.1.2c-.4.1-1.3.1-2.1.9C2.2 6.7 2 8.2 2 8.2S1.8 10 1.8 11.8v1.6C1.8 15.2 2 17 2 17s.2 1.5.8 2.1c.8.8 1.8.8 2.3.9 1.7.2 6.9.2 6.9.2s4.2 0 7.1-.2c.4-.1 1.3-.1 2.1-.9.6-.6.8-2.1.8-2.1s.2-1.8.2-3.6v-1.6C22.2 10 22 8.2 22 8.2zM9.8 14.9V8.6l5.7 3.2z"/></svg></a>
+    <a href="#" aria-label="Discord"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 5.3A16.4 16.4 0 0 0 15.4 4l-.2.4c1.5.4 2.6 1 3.1 1.4a12.6 12.6 0 0 0-11 0c.5-.4 1.7-1 3.1-1.4L10.2 4a16 16 0 0 0-3.9 1.3C3.6 9.1 3 12.8 3.3 16.4A16.5 16.5 0 0 0 8 19l1-1.6c-.9-.3-1.6-.7-2.3-1.2l.5-.4a11.7 11.7 0 0 0 10.2 0l.5.4c-.7.5-1.4.9-2.3 1.2L16.6 19a16.5 16.5 0 0 0 4.7-2.6c.4-4.2-.6-7.8-2-11.1zM9.7 14.2c-.9 0-1.6-.8-1.6-1.8s.7-1.8 1.6-1.8 1.6.8 1.6 1.8-.7 1.8-1.6 1.8zm5.2 0c-.9 0-1.6-.8-1.6-1.8s.7-1.8 1.6-1.8 1.6.8 1.6 1.8-.7 1.8-1.6 1.8z"/></svg></a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="wrap">
+
+    <header class="hero" id="home">
+      <svg class="hero-topo" viewBox="0 0 1100 420" fill="none" stroke="currentColor" stroke-width="1.2" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M-20 60 C 150 20, 320 110, 520 70 S 900 30, 1120 80"/>
+        <path d="M-20 120 C 160 80, 340 170, 540 130 S 910 90, 1120 140"/>
+        <path d="M-20 185 C 170 145, 350 230, 555 190 S 915 150, 1120 200"/>
+        <path d="M-20 255 C 180 215, 360 295, 565 255 S 920 215, 1120 265"/>
+        <path d="M-20 330 C 190 290, 370 365, 575 325 S 925 285, 1120 335"/>
+      </svg>
+      <div class="hero-inner">
+        <div class="eyebrow">// The trailhead</div>
+        <h1>Slower-paced games, played all the way through.</h1>
+        <p class="lede">Survival builds, open-world exploration, and the occasional roguelike rabbit hole. Streams three nights a week — everything else lands here as VODs.</p>
+
+        <div class="player" id="player">
+          <span class="badge" id="playerBadge">OFFLINE</span>
+          <div class="offline">
+            <div class="mono">STREAM RETURNS</div>
+            <h3>Friday · 7:00 PM MT</h3>
+            <p>Valheim — Ashlands, night three. The embed goes live here automatically.</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section id="schedule">
+      <div class="sec-head">
+        <h2>This week</h2>
+        <span class="more mono">Times in Mountain Time</span>
+      </div>
+      <div class="sched">
+        <div class="sched-card">
+          <div class="day">Tue</div>
+          <div class="what">Valheim — Ashlands</div>
+          <div class="when">7:00–10:00 PM</div>
+        </div>
+        <div class="sched-card today">
+          <div class="day">Thu · today</div>
+          <div class="what">Deep Rock Galactic w/ subs</div>
+          <div class="when">7:00–9:30 PM</div>
+        </div>
+        <div class="sched-card">
+          <div class="day">Fri</div>
+          <div class="what">Valheim — Ashlands</div>
+          <div class="when">7:00–10:00 PM</div>
+        </div>
+        <div class="sched-card">
+          <div class="day">Sun</div>
+          <div class="what">Variety / chat picks</div>
+          <div class="when">2:00–5:00 PM</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="videos">
+      <div class="sec-head">
+        <h2>Latest videos</h2>
+        <a class="more" href="#">Browse all →</a>
+      </div>
+
+      <div class="tagbar" id="tagbar" role="group" aria-label="Filter videos by tag">
+        <button class="tag on" data-tag="all">all</button>
+        <button class="tag" data-tag="valheim">valheim</button>
+        <button class="tag" data-tag="survival">survival</button>
+        <button class="tag" data-tag="co-op">co-op</button>
+        <button class="tag" data-tag="guide">guide</button>
+        <button class="tag" data-tag="highlights">highlights</button>
+        <button class="tag" data-tag="roguelike">roguelike</button>
+      </div>
+
+      <div class="grid" id="grid">
+        <article class="vid" data-tags="valheim survival">
+          <div class="thumb" style="background:linear-gradient(135deg,#24352a,#3c5a41)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span class="dur">3:12:44</span>
+          </div>
+          <div class="vid-body">
+            <h3>We finally reached the Ashlands (and immediately regretted it)</h3>
+            <div class="vid-meta">2 days ago · 12K views</div>
+            <div class="vid-tags"><span>valheim</span><span>survival</span></div>
+          </div>
+        </article>
+
+        <article class="vid" data-tags="guide valheim">
+          <div class="thumb" style="background:linear-gradient(135deg,#2a3524,#5a5a3c)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span class="dur">18:07</span>
+          </div>
+          <div class="vid-body">
+            <h3>Base defense that actually works — full walkthrough</h3>
+            <div class="vid-meta">5 days ago · 34K views</div>
+            <div class="vid-tags"><span>guide</span><span>valheim</span></div>
+          </div>
+        </article>
+
+        <article class="vid" data-tags="co-op highlights">
+          <div class="thumb" style="background:linear-gradient(135deg,#1f2c33,#3c505a)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span class="dur">11:52</span>
+          </div>
+          <div class="vid-body">
+            <h3>Deep Rock highlights: the swarm that ended the friendship</h3>
+            <div class="vid-meta">1 week ago · 21K views</div>
+            <div class="vid-tags"><span>co-op</span><span>highlights</span></div>
+          </div>
+        </article>
+
+        <article class="vid" data-tags="roguelike highlights">
+          <div class="thumb" style="background:linear-gradient(135deg,#33231f,#5a453c)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span class="dur">42:19</span>
+          </div>
+          <div class="vid-body">
+            <h3>One run, no deaths, entirely undeserved</h3>
+            <div class="vid-meta">2 weeks ago · 18K views</div>
+            <div class="vid-tags"><span>roguelike</span><span>highlights</span></div>
+          </div>
+        </article>
+
+        <article class="vid" data-tags="survival guide">
+          <div class="thumb" style="background:linear-gradient(135deg,#232b33,#3c4a5a)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span class="dur">26:40</span>
+          </div>
+          <div class="vid-body">
+            <h3>Early-game survival mistakes I still make on purpose</h3>
+            <div class="vid-meta">3 weeks ago · 27K views</div>
+            <div class="vid-tags"><span>survival</span><span>guide</span></div>
+          </div>
+        </article>
+
+        <article class="vid" data-tags="valheim co-op">
+          <div class="thumb" style="background:linear-gradient(135deg,#25331f,#4a5a3c)">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span class="dur">2:48:10</span>
+          </div>
+          <div class="vid-body">
+            <h3>Viewer server tour — your builds put mine to shame</h3>
+            <div class="vid-meta">1 month ago · 15K views</div>
+            <div class="vid-tags"><span>valheim</span><span>co-op</span></div>
+          </div>
+        </article>
+
+        <p class="empty hidden" id="empty">No videos match that tag yet.</p>
+      </div>
+    </section>
+
+    <section id="playlists">
+      <div class="sec-head">
+        <h2>Playlists</h2>
+        <a class="more" href="#">All playlists →</a>
+      </div>
+      <div class="plist-row">
+        <a class="plist" href="#">
+          <div class="count">38 VIDEOS</div>
+          <h3>Valheim: Full Saga</h3>
+          <p>Every session from meadows to Ashlands, in order.</p>
+        </a>
+        <a class="plist" href="#">
+          <div class="count">14 VIDEOS</div>
+          <h3>Guides &amp; Builds</h3>
+          <p>Short, focused how-tos. No filler.</p>
+        </a>
+        <a class="plist" href="#">
+          <div class="count">22 VIDEOS</div>
+          <h3>Co-op Nights</h3>
+          <p>Deep Rock, Lethal Company, and friends.</p>
+        </a>
+        <a class="plist" href="#">
+          <div class="count">9 VIDEOS</div>
+          <h3>Best Of</h3>
+          <p>Clips worth a second watch.</p>
+        </a>
+      </div>
+    </section>
+
+    <section id="community">
+      <div class="sec-head">
+        <h2>Community</h2>
+      </div>
+      <p style="color:var(--text-dim); max-width:560px;">
+        The Discord is where stream pings, server invites, and build screenshots live.
+        The join widget and live member count will sit here once the bot is hooked up.
+      </p>
+    </section>
+
+    <footer>
+      <span>© 2026 Pinewood. VODs hosted on YouTube; live streams on Twitch.</span>
+      <span class="mono">demo build v0.1</span>
+    </footer>
+
+  </div>
+</main>
+
+<script>
+  // Tag filtering
+  const tagbar = document.getElementById('tagbar');
+  const cards = [...document.querySelectorAll('.vid')];
+  const empty = document.getElementById('empty');
+
+  tagbar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tag');
+    if (!btn) return;
+    tagbar.querySelectorAll('.tag').forEach(t => t.classList.remove('on'));
+    btn.classList.add('on');
+    const tag = btn.dataset.tag;
+    let shown = 0;
+    cards.forEach(c => {
+      const match = tag === 'all' || c.dataset.tags.split(' ').includes(tag);
+      c.classList.toggle('hidden', !match);
+      if (match) shown++;
+    });
+    empty.classList.toggle('hidden', shown > 0);
+  });
+
+  // Demo: toggle live state by pressing "L" (so you can show both states)
+  const pill = document.getElementById('livePill');
+  const player = document.getElementById('player');
+  const badge = document.getElementById('playerBadge');
+  const label = document.getElementById('liveLabel');
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() !== 'l' || e.target.tagName === 'INPUT') return;
+    const live = !pill.classList.contains('is-live');
+    pill.classList.toggle('is-live', live);
+    player.classList.toggle('is-live', live);
+    badge.textContent = live ? 'LIVE' : 'OFFLINE';
+    label.textContent = live ? 'Live now' : 'Offline';
+  });
+</script>
+
+</body>
+</html>
